@@ -1,69 +1,106 @@
+const express = require("express");
+const app = express();
+const PORT = process.env.PORT || 10000;
+
+// paste your API key here
+const API_KEY = "PASTE_YOUR_API_KEY_HERE";
+
+app.get("/", (req, res) => {
+  res.send(`
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>I LOVE YOU PRO</title>
+<style>
+body{background:#07111f;color:white;font-family:Arial;text-align:center;padding:18px}
+h1{font-size:34px}
+button{padding:16px 24px;margin:15px;border:none;border-radius:18px;font-size:20px;background:#4CAF50;color:white}
+.card{background:#111827;padding:18px;margin:18px 0;border-radius:22px;box-shadow:0 0 18px #000}
+.good{color:#00ffcc;font-weight:bold}
+.wait{color:yellow;font-weight:bold}
+.bad{color:#ff5c5c;font-weight:bold}
+.bar{background:#333;border-radius:20px;overflow:hidden;margin:10px 0}
+.fill{height:14px;background:#00ffcc}
+</style>
+</head>
+<body>
+<h1>❤️ I LOVE YOU PRO</h1>
+<p>Live Cricket AI Decision System</p>
+<button onclick="load()">Load Matches</button>
+<div id="matches"></div>
+
 <script>
 async function load(){
   document.getElementById("matches").innerHTML="Loading...";
+  let res=await fetch("/api/current-matches");
+  let json=await res.json();
 
-  let res = await fetch("/api/current-matches");
-  let json = await res.json();
-
-  let html = json.data.map(m=>{
-    let ai = analyze(m);
-
-    return `
-      <div class="card">
-        <h2>${m.name}</h2>
-        <p>${m.status}</p>
-        <b>${m.score}</b>
-
-        <p class="${ai.cls}">${ai.decision}</p>
-
-        <p>Win Probability: ${ai.win}%</p>
-        <p>Opportunity: ${ai.opportunity}/100</p>
-        <p>Momentum: ${ai.momentum}</p>
-        <p>Risk: ${ai.risk}</p>
-      </div>
-    `;
+  document.getElementById("matches").innerHTML=json.data.map(m=>{
+    let a=analyze(m);
+    return \`
+    <div class="card">
+      <h2>\${m.name}</h2>
+      <p>\${m.status}</p>
+      <h3>\${m.score}</h3>
+      <p class="\${a.cls}">\${a.decision}</p>
+      <p>Win Probability: \${a.win}%</p>
+      <div class="bar"><div class="fill" style="width:\${a.win}%"></div></div>
+      <p>Opportunity: \${a.opportunity}/100</p>
+      <p>Momentum: \${a.momentum}</p>
+      <p>Risk: \${a.risk}</p>
+    </div>\`;
   }).join("");
-
-  document.getElementById("matches").innerHTML = html;
 }
 
 function analyze(m){
-  let status = (m.status || "").toLowerCase();
+  let s=(m.status||"").toLowerCase();
+  let win=50,opportunity=50,decision="⏳ WAIT",cls="wait",momentum="Neutral",risk="Medium";
 
-  let win = 50;
-  let opportunity = 50;
-  let decision = "WAIT";
-  let cls = "wait";
-  let momentum = "Neutral";
-  let risk = "Medium";
-
-  if(status.includes("won")){
-    win = 100;
-    opportunity = 0;
-    decision = "MATCH FINISHED";
-    cls = "good";
-    momentum = "Completed";
-    risk = "None";
-  }
-  else if(status.includes("need")){
-    win = 65;
-    opportunity = 75;
-    decision = "STRONG YES";
-    cls = "good";
-    momentum = "Chasing";
-    risk = "Medium";
-  }
-  else if(status.includes("require")){
-    win = 40;
-    opportunity = 60;
-    decision = "WAIT";
-    cls = "wait";
-    momentum = "Pressure";
-    risk = "High";
+  if(s.includes("won")){
+    win=100; opportunity=0; decision="✅ MATCH FINISHED"; cls="good"; momentum="Completed"; risk="None";
+  } else if(s.includes("need") || s.includes("target")){
+    win=65; opportunity=75; decision="🔥 CHASE MODE"; cls="good"; momentum="Active Chase"; risk="Medium";
+  } else if(s.includes("rain") || s.includes("delay")){
+    win=35; opportunity=20; decision="⚠️ BLOCK"; cls="bad"; momentum="Interrupted"; risk="High";
+  } else {
+    win=55; opportunity=55; decision="⚡ LIVE WATCH"; cls="wait"; momentum="Live"; risk="Medium";
   }
 
   return {win,opportunity,decision,cls,momentum,risk};
 }
 
 setInterval(load,15000);
+load();
 </script>
+</body>
+</html>
+  `);
+});
+
+app.get("/api/current-matches", async (req, res) => {
+  try {
+    const response = await fetch(`https://api.cricapi.com/v1/currentMatches?apikey=${API_KEY}&offset=0`);
+    const data = await response.json();
+
+    const matches = (data.data || []).map(m => ({
+      name: m.name || "Live Match",
+      status: m.status || "Live",
+      score: Array.isArray(m.score)
+        ? m.score.map(s => `${s.r}/${s.w} (${s.o} overs)`).join(" | ")
+        : "Score unavailable"
+    }));
+
+    res.json({ data: matches.length ? matches : demo() });
+  } catch (e) {
+    res.json({ data: demo() });
+  }
+});
+
+function demo(){
+  return [
+    {name:"Demo Backup Mode",status:"API failed or no live match",score:"Try again later"}
+  ];
+}
+
+app.listen(PORT,()=>console.log("I LOVE YOU PRO running on port "+PORT));
