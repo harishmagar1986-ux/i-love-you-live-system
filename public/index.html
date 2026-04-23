@@ -1,26 +1,64 @@
-<!DOCTYPE html><html>
+<!DOCTYPE html>
+<html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>I LOVE YOU LIVE</title>
+<title>I LOVE YOU</title>
+
 <style>
-body{background:#0b1220;color:white;font-family:Arial;text-align:center;padding:20px}
-button{padding:15px;margin:10px;border:none;border-radius:10px;font-size:16px}
+body {
+  background:#07111f;
+  color:white;
+  font-family:Arial;
+  text-align:center;
+  padding:20px;
+}
+button {
+  padding:15px;
+  margin:15px;
+  border:none;
+  border-radius:12px;
+  font-size:18px;
+  background:#4CAF50;
+  color:white;
+}
+.card {
+  background:#111;
+  padding:15px;
+  margin:10px;
+  border-radius:12px;
+}
 </style>
 </head>
-<body><h1>❤️ I LOVE YOU</h1>
-<p>Live Cricket System</p><button onclick="load()">Load Matches</button>
 
-<pre id="data"></pre><script>
-async function load(){
-  document.getElementById("data").innerText="Loading...";
-  try{
-    let res = await fetch("/api/current-matches");
-    let json = await res.json();
-    document.getElementById("data").innerText =
-      JSON.stringify(json.data,null,2);
-  }catch(e){
-    document.getElementById("data").innerText="Error loading data";
-  }
+<body>
+
+<h1>❤️ I LOVE YOU</h1>
+<p>Live Cricket System</p>
+
+<button onclick="load()">Load Matches</button>
+
+<div id="data"></div>
+
+<script>
+async function load() {
+  document.getElementById("data").innerHTML = "Loading...";
+
+  let res = await fetch("/api/current-matches");
+  let json = await res.json();
+
+  document.getElementById("data").innerHTML =
+    json.data.map(m => `
+      <div class="card">
+        <h3>${m.name}</h3>
+        <p>${m.status}</p>
+        <b>${m.score}</b>
+      </div>
+    `).join("");
 }
-</script></body>
+
+// AUTO REFRESH
+setInterval(load, 10000);
+</script>
+
+</body>
 </html>
