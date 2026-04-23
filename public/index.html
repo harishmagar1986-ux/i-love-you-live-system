@@ -1,134 +1,69 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>I LOVE YOU PRO</title>
-<style>
-body{background:#07111f;color:white;font-family:Arial;text-align:center;padding:18px}
-h1{font-size:34px}
-button{padding:16px 24px;margin:15px;border:none;border-radius:18px;font-size:20px;background:#4CAF50;color:white}
-.card{background:#111827;padding:18px;margin:18px 0;border-radius:22px;box-shadow:0 0 18px #000}
-.score{font-size:22px;font-weight:bold}
-.good{color:#00ffcc;font-weight:bold}
-.wait{color:yellow;font-weight:bold}
-.bad{color:#ff5c5c;font-weight:bold}
-.small{color:#bbb}
-.bar{background:#333;border-radius:20px;overflow:hidden;margin:10px 0}
-.fill{height:14px;background:#00ffcc}
-</style>
-</head>
-<body>
-
-<h1>❤️ I LOVE YOU PRO</h1>
-<p>Live Cricket AI Decision System</p>
-
-<button onclick="load()">Load Matches</button>
-<div id="matches"></div>
-
 <script>
 async function load(){
-  document.getElementById("matches").innerHTML="Loading live data...";
+  document.getElementById("matches").innerHTML="Loading...";
 
   let res = await fetch("/api/current-matches");
   let json = await res.json();
 
-  document.getElementById("matches").innerHTML = json.data.map(m=>{
+  let html = json.data.map(m=>{
     let ai = analyze(m);
 
     return `
       <div class="card">
         <h2>${m.name}</h2>
         <p>${m.status}</p>
-        <div class="score">${m.score}</div>
+        <b>${m.score}</b>
 
         <p class="${ai.cls}">${ai.decision}</p>
 
-        <p class="good">Win Probability: ${ai.win}%</p>
-        <div class="bar"><div class="fill" style="width:${ai.win}%"></div></div>
-
-        <p>Opportunity Score: ${ai.opportunity}/100</p>
+        <p>Win Probability: ${ai.win}%</p>
+        <p>Opportunity: ${ai.opportunity}/100</p>
         <p>Momentum: ${ai.momentum}</p>
         <p>Risk: ${ai.risk}</p>
-        <p class="small">${ai.reason}</p>
       </div>
     `;
   }).join("");
+
+  document.getElementById("matches").innerHTML = html;
 }
 
 function analyze(m){
   let status = (m.status || "").toLowerCase();
-  let score = (m.score || "").toLowerCase();
 
   let win = 50;
   let opportunity = 50;
-  let decision = "⏳ WAIT";
+  let decision = "WAIT";
   let cls = "wait";
   let momentum = "Neutral";
   let risk = "Medium";
-  let reason = "Waiting for stronger live confirmation.";
 
   if(status.includes("won")){
     win = 100;
     opportunity = 0;
-    decision = "✅ MATCH FINISHED";
+    decision = "MATCH FINISHED";
     cls = "good";
     momentum = "Completed";
-    risk = "No Trade";
-    reason = "Match is already completed.";
+    risk = "None";
   }
   else if(status.includes("need")){
     win = 65;
-    opportunity = 72;
-    decision = "🔥 CHASE MODE";
+    opportunity = 75;
+    decision = "STRONG YES";
     cls = "good";
-    momentum = "Active chase";
+    momentum = "Chasing";
     risk = "Medium";
-    reason = "Target chase situation detected.";
   }
-  else if(status.includes("rain") || status.includes("delay")){
-    win = 35;
-    opportunity = 20;
-    decision = "⚠️ BLOCK";
-    cls = "bad";
-    momentum = "Interrupted";
-    risk = "High";
-    reason = "Rain/delay risk detected.";
-  }
-  else if(status.includes("innings break")){
-    win = 50;
-    opportunity = 30;
-    decision = "⏳ WAIT";
+  else if(status.includes("require")){
+    win = 40;
+    opportunity = 60;
+    decision = "WAIT";
     cls = "wait";
-    momentum = "Break";
-    risk = "Medium";
-    reason = "Innings break. Wait for next phase.";
-  }
-  else{
-    win = 55;
-    opportunity = 55;
-    decision = "⚡ LIVE WATCH";
-    cls = "wait";
-    momentum = "Live";
-    risk = "Medium";
-    reason = "Live match detected but signal not strong.";
-  }
-
-  if(score.includes("/6") || score.includes("/7") || score.includes("/8") || score.includes("/9")){
-    opportunity -= 20;
+    momentum = "Pressure";
     risk = "High";
-    decision = "❌ BLOCK / HIGH RISK";
-    cls = "bad";
-    reason = "High wicket pressure detected.";
   }
 
-  opportunity = Math.max(0, Math.min(100, opportunity));
-
-  return {win, opportunity, decision, cls, momentum, risk, reason};
+  return {win,opportunity,decision,cls,momentum,risk};
 }
 
 setInterval(load,15000);
-load();
 </script>
-
-</body>
-</html>
