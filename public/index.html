@@ -1,144 +1,26 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>I LOVE YOU - Live Cricket</title>
+let html = json.data.map(m => {
+  let prob = getWinProbability(m);
+  let decision = getDecision(prob);
+  let opp = getOpportunity(prob);
 
-<style>
-body {
-  background:#0b1220;
-  color:white;
-  font-family:Arial;
-  text-align:center;
-  padding:20px;
-}
+  return `
+  <div class="card">
+    <h2>${m.name}</h2>
+    <p>${m.status}</p>
+    <b>${m.score}</b>
 
-h1 { font-size:28px; }
+    <div class="ai green">
+      Win: A ${prob.teamA}% | B ${prob.teamB}%
+    </div>
 
-button {
-  padding:15px;
-  margin:10px;
-  border:none;
-  border-radius:12px;
-  font-size:18px;
-  background:#4CAF50;
-  color:white;
-}
+    <div class="ai yellow">
+      ${decision}
+    </div>
 
-.card {
-  background:#111;
-  padding:15px;
-  margin:15px;
-  border-radius:15px;
-  box-shadow:0 0 10px rgba(0,0,0,0.5);
-}
+    <div class="ai">
+      Opportunity: ${opp}/100
+    </div>
 
-.ai {
-  margin-top:10px;
-  font-weight:bold;
-}
-
-.green { color:#00ffcc; }
-.yellow { color:yellow; }
-.red { color:red; }
-</style>
-</head>
-
-<body>
-
-<h1>❤️ I LOVE YOU</h1>
-<p>Live Cricket System</p>
-
-<button onclick="load()">Load Matches</button>
-
-<div id="matches"></div>
-
-<script>
-
-async function load(){
-  document.getElementById("matches").innerHTML = "Loading...";
-
-  try{
-    let res = await fetch("/api/current-matches");
-    let json = await res.json();
-
-    let html = json.data.map(m => {
-      let prob = getWinProbability(m);
-      let decision = getDecision(prob);
-      let opp = getOpportunity(prob);
-
-      return `
-      <div class="card">
-        <h2>${m.name}</h2>
-        <p>${m.status}</p>
-        <b>${m.score}</b>
-
-        <div class="ai green">
-          Win: A ${prob.teamA}% | B ${prob.teamB}%
-        </div>
-
-        <div class="ai yellow">
-          ${decision}
-        </div>
-
-        <div class="ai">
-          Opportunity: ${opp}/100
-        </div>
-      </div>
-      `;
-    }).join("");
-
-    document.getElementById("matches").innerHTML = html;
-
-  }catch(e){
-    document.getElementById("matches").innerHTML = "Error loading matches";
-  }
-}
-
-function getWinProbability(m){
-  let text = (m.status || "").toLowerCase();
-
-  let teamA = 50;
-  let teamB = 50;
-
-  if(text.includes("won")){
-    teamA = 100;
-    teamB = 0;
-  }
-
-  if(text.includes("need")){
-    teamA = 65;
-    teamB = 35;
-  }
-
-  if(text.includes("require") || text.includes("run rate")){
-    teamA = 40;
-    teamB = 60;
-  }
-
-  if(text.includes("innings break")){
-    teamA = 50;
-    teamB = 50;
-  }
-
-  return {teamA, teamB};
-}
-
-function getDecision(prob){
-  if(prob.teamA > 75) return "🔥 STRONG YES";
-  if(prob.teamA > 60) return "✅ YES";
-  if(prob.teamA < 40) return "❌ NO";
-  return "⏳ WAIT";
-}
-
-function getOpportunity(prob){
-  let score = Math.abs(prob.teamA - prob.teamB);
-  return Math.min(100, score * 2);
-}
-
-setInterval(load,15000);
-
-</script>
-
-</body>
-</html>
+  </div>
+  `;
+}).join("");
