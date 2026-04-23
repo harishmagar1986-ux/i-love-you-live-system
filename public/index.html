@@ -2,70 +2,132 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>I LOVE YOU</title>
+<title>I LOVE YOU PRO</title>
 <style>
-body{background:#07111f;color:white;font-family:Arial;text-align:center;padding:20px}
-button{padding:15px;margin:15px;border:none;border-radius:12px;font-size:18px;background:#4CAF50;color:white}
-.card{background:#111;padding:15px;margin:15px;border-radius:15px}
-.ai{margin-top:10px;font-weight:bold}
-.green{color:#00ffcc}
-.yellow{color:yellow}
+body{background:#07111f;color:white;font-family:Arial;text-align:center;padding:18px}
+h1{font-size:34px}
+button{padding:16px 24px;margin:15px;border:none;border-radius:18px;font-size:20px;background:#4CAF50;color:white}
+.card{background:#111827;padding:18px;margin:18px 0;border-radius:22px;box-shadow:0 0 18px #000}
+.score{font-size:22px;font-weight:bold}
+.good{color:#00ffcc;font-weight:bold}
+.wait{color:yellow;font-weight:bold}
+.bad{color:#ff5c5c;font-weight:bold}
+.small{color:#bbb}
+.bar{background:#333;border-radius:20px;overflow:hidden;margin:10px 0}
+.fill{height:14px;background:#00ffcc}
 </style>
 </head>
 <body>
 
-<h1>❤️ I LOVE YOU</h1>
-<p>Live Cricket System</p>
+<h1>❤️ I LOVE YOU PRO</h1>
+<p>Live Cricket AI Decision System</p>
+
 <button onclick="load()">Load Matches</button>
 <div id="matches"></div>
 
 <script>
 async function load(){
-  document.getElementById("matches").innerHTML="Loading...";
+  document.getElementById("matches").innerHTML="Loading live data...";
+
   let res = await fetch("/api/current-matches");
   let json = await res.json();
 
-  let html = json.data.map(m => {
-    let prob = getWinProbability(m);
-    let decision = getDecision(prob);
-    let opp = getOpportunity(prob);
+  document.getElementById("matches").innerHTML = json.data.map(m=>{
+    let ai = analyze(m);
 
     return `
       <div class="card">
         <h2>${m.name}</h2>
         <p>${m.status}</p>
-        <b>${m.score}</b>
-        <div class="ai green">Win: A ${prob.teamA}% | B ${prob.teamB}%</div>
-        <div class="ai yellow">${decision}</div>
-        <div class="ai">Opportunity: ${opp}/100</div>
+        <div class="score">${m.score}</div>
+
+        <p class="${ai.cls}">${ai.decision}</p>
+
+        <p class="good">Win Probability: ${ai.win}%</p>
+        <div class="bar"><div class="fill" style="width:${ai.win}%"></div></div>
+
+        <p>Opportunity Score: ${ai.opportunity}/100</p>
+        <p>Momentum: ${ai.momentum}</p>
+        <p>Risk: ${ai.risk}</p>
+        <p class="small">${ai.reason}</p>
       </div>
     `;
   }).join("");
-
-  document.getElementById("matches").innerHTML = html;
 }
 
-function getWinProbability(m){
-  let text = (m.status || "").toLowerCase();
-  let teamA = 50, teamB = 50;
-  if(text.includes("won")){teamA=100;teamB=0}
-  if(text.includes("need")){teamA=65;teamB=35}
-  if(text.includes("require")){teamA=40;teamB=60}
-  return {teamA,teamB};
-}
+function analyze(m){
+  let status = (m.status || "").toLowerCase();
+  let score = (m.score || "").toLowerCase();
 
-function getDecision(prob){
-  if(prob.teamA > 75) return "🔥 STRONG YES";
-  if(prob.teamA > 60) return "✅ YES";
-  if(prob.teamA < 40) return "❌ NO";
-  return "⏳ WAIT";
-}
+  let win = 50;
+  let opportunity = 50;
+  let decision = "⏳ WAIT";
+  let cls = "wait";
+  let momentum = "Neutral";
+  let risk = "Medium";
+  let reason = "Waiting for stronger live confirmation.";
 
-function getOpportunity(prob){
-  return Math.min(100, Math.abs(prob.teamA - prob.teamB) * 2);
+  if(status.includes("won")){
+    win = 100;
+    opportunity = 0;
+    decision = "✅ MATCH FINISHED";
+    cls = "good";
+    momentum = "Completed";
+    risk = "No Trade";
+    reason = "Match is already completed.";
+  }
+  else if(status.includes("need")){
+    win = 65;
+    opportunity = 72;
+    decision = "🔥 CHASE MODE";
+    cls = "good";
+    momentum = "Active chase";
+    risk = "Medium";
+    reason = "Target chase situation detected.";
+  }
+  else if(status.includes("rain") || status.includes("delay")){
+    win = 35;
+    opportunity = 20;
+    decision = "⚠️ BLOCK";
+    cls = "bad";
+    momentum = "Interrupted";
+    risk = "High";
+    reason = "Rain/delay risk detected.";
+  }
+  else if(status.includes("innings break")){
+    win = 50;
+    opportunity = 30;
+    decision = "⏳ WAIT";
+    cls = "wait";
+    momentum = "Break";
+    risk = "Medium";
+    reason = "Innings break. Wait for next phase.";
+  }
+  else{
+    win = 55;
+    opportunity = 55;
+    decision = "⚡ LIVE WATCH";
+    cls = "wait";
+    momentum = "Live";
+    risk = "Medium";
+    reason = "Live match detected but signal not strong.";
+  }
+
+  if(score.includes("/6") || score.includes("/7") || score.includes("/8") || score.includes("/9")){
+    opportunity -= 20;
+    risk = "High";
+    decision = "❌ BLOCK / HIGH RISK";
+    cls = "bad";
+    reason = "High wicket pressure detected.";
+  }
+
+  opportunity = Math.max(0, Math.min(100, opportunity));
+
+  return {win, opportunity, decision, cls, momentum, risk, reason};
 }
 
 setInterval(load,15000);
+load();
 </script>
 
 </body>
