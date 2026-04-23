@@ -1,0 +1,26 @@
+<!DOCTYPE html><html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>I LOVE YOU LIVE</title>
+<style>
+body{background:#0b1220;color:white;font-family:Arial;text-align:center;padding:20px}
+button{padding:15px;margin:10px;border:none;border-radius:10px;font-size:16px}
+</style>
+</head>
+<body><h1>❤️ I LOVE YOU</h1>
+<p>Live Cricket System</p><button onclick="load()">Load Matches</button>
+
+<pre id="data"></pre><script>
+async function load(){
+  document.getElementById("data").innerText="Loading...";
+  try{
+    let res = await fetch("/api/current-matches");
+    let json = await res.json();
+    document.getElementById("data").innerText =
+      JSON.stringify(json.data,null,2);
+  }catch(e){
+    document.getElementById("data").innerText="Error loading data";
+  }
+}
+</script></body>
+</html>
