@@ -2,13 +2,15 @@ const fetch = require("node-fetch");
 
 app.get('/api/current-matches', async (req, res) => {
   try {
-    const response = await fetch("https://api.cricapi.com/v1/currentMatches?apikey=YOUR_API_KEY&offset=0");
-    const data = await response.json();
+    const response = await fetch("https://api.cricketdata.org/v1/matches?apikey=275608b3-211a-43c8");
+    const json = await response.json();
 
-    const matches = data.data.map(m => ({
-      name: m.name,
-      status: m.status,
-      score: m.score?.map(s => `${s.r}/${s.w} (${s.o} ov)`).join(" | ") || "N/A"
+    const matches = json.data.map(m => ({
+      name: `${m.teamInfo?.[0]?.name || ''} vs ${m.teamInfo?.[1]?.name || ''}`,
+      status: m.status || "Live",
+      score: m.score
+        ? m.score.map(s => `${s.r}/${s.w} (${s.o} ov)`).join(" | ")
+        : "N/A"
     }));
 
     res.json({ data: matches });
