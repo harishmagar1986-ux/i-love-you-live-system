@@ -2,184 +2,120 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>I LOVE YOU Cricket AI</title>
+<title>I LOVE YOU Cricket AI PRO</title>
 <style>
-body{margin:0;font-family:Arial;background:#07111f;color:white}
-.box{padding:18px}
-.card{background:#101c2f;margin:12px 0;padding:15px;border-radius:16px}
-button,input,select{width:100%;padding:14px;margin:7px 0;border-radius:12px;border:0;font-size:16px}
-button{background:#00e676;font-weight:bold}
-.badge{display:inline-block;padding:8px 12px;border-radius:20px;background:#1f8bff;margin:4px}
-.big{font-size:28px;font-weight:bold}
-.wait{background:#ffb300}.enter{background:#00c853}.block{background:#ff1744}
-.small{color:#b7c4d6}
+body{margin:0;font-family:Arial;background:#06101f;color:white}
+.wrap{padding:14px;max-width:900px;margin:auto}
+.card{background:#101d33;border-radius:18px;padding:14px;margin:12px 0}
+button,input,select{width:100%;padding:14px;border-radius:13px;border:0;margin:6px 0;font-size:15px;box-sizing:border-box}
+button{background:#00e676;font-weight:800}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.kpi{background:#071426;border-radius:14px;padding:12px}
+.big{font-size:26px;font-weight:900}
+.small{color:#b5c2d6}
+.enter{background:#063d23}.wait{background:#4a3600}.avoid{background:#32153d}.block{background:#4a0912}
+.badge{display:inline-block;background:#203656;padding:7px 10px;border-radius:20px;margin:3px}
 </style>
 </head>
 <body>
-<div class="box">
-  <h1>🏏 I LOVE YOU Cricket AI</h1>
-  <div class="card">
-    <b>Real API Key</b>
-    <input id="key" placeholder="275608b3-211a-43c8-a57a-b7e30473d84c">
-    <button onclick="saveKey()">SAVE KEY</button>
-    <button onclick="loadMatches()">LOAD LIVE MATCHES</button>
-    <div class="small">Auto refresh: 15 seconds after match select</div>
-  </div>
+<div class="wrap">
+<h1>🏏 I LOVE YOU Cricket AI PRO</h1>
+<div class="card">
+<b>Backend URL</b>
+<input id="backend" placeholder="Paste Render backend URL, example: https://your-app.onrender.com">
+<button onclick="saveBackend()">SAVE BACKEND</button>
+<button onclick="loadMatches()">LOAD LIVE MATCHES</button>
+</div>
 
-  <div class="card">
-    <b>Select Match</b>
-    <select id="matches" onchange="selectMatch()">
-      <option>Load matches first</option>
-    </select>
-  </div>
+<div class="card">
+<select id="matches" onchange="selectMatch()"><option>Load matches first</option></select>
+<button onclick="loadMatchAI()">REFRESH</button>
+</div>
 
-  <div id="app"></div>
+<div id="app"></div>
 </div>
 
 <script>
-let API_KEY = localStorage.getItem("CRICKET_KEY") || "";
-document.getElementById("key").value = API_KEY;
-let selectedId = "";
-let timer = null;
+let BACKEND=localStorage.getItem("BACKEND_URL")||"";
+let selectedId="";
+let timer=null;
+document.getElementById("backend").value=BACKEND;
 
-function saveKey(){
-  API_KEY = document.getElementById("key").value.trim();
-  localStorage.setItem("CRICKET_KEY", API_KEY);
-  alert("API key saved");
+function saveBackend(){
+ BACKEND=document.getElementById("backend").value.trim().replace(/\/$/,"");
+ localStorage.setItem("BACKEND_URL",BACKEND);
+ alert("Backend saved ✅");
 }
-
-async function api(url){
-  const r = await fetch(url);
-  return await r.json();
-}
+async function getJson(url){let r=await fetch(url);return await r.json();}
+function n(x){return Number(String(x||0).replace(/[^\d.]/g,""))||0}
 
 async function loadMatches(){
-  if(!API_KEY) return alert("Paste API key first");
-  const url = `https://api.cricapi.com/v1/currentMatches?apikey=${API_KEY}&offset=0`;
-  try{
-    const j = await api(url);
-    const data = j.data || [];
-    const sel = document.getElementById("matches");
-    sel.innerHTML = "";
-    data.forEach(m=>{
-      const op=document.createElement("option");
-      op.value=m.id;
-      op.textContent=`${m.name || "Match"} | ${m.status || ""}`;
-      sel.appendChild(op);
-    });
-    if(data.length===0) alert("No live match found or API limit/coverage issue");
-  }catch(e){
-    alert("API error. Check key or internet.");
-  }
+ if(!BACKEND)return alert("Paste backend URL first");
+ document.getElementById("app").innerHTML='<div class="card">Loading matches...</div>';
+ try{
+  const j=await getJson(`${BACKEND}/api/matches`);
+  const arr=j.data||[];
+  const sel=document.getElementById("matches");
+  sel.innerHTML="";
+  arr.forEach(m=>{
+   let op=document.createElement("option");
+   op.value=m.id;
+   op.textContent=(m.name||"Match")+" | "+(m.status||"");
+   sel.appendChild(op);
+  });
+  document.getElementById("app").innerHTML=`<div class="card">${arr.length} matches loaded ✅</div>`;
+ }catch(e){
+  document.getElementById("app").innerHTML='<div class="card">Backend/API error.</div>';
+ }
 }
 
 function selectMatch(){
-  selectedId=document.getElementById("matches").value;
-  loadMatchAI();
-  clearInterval(timer);
-  timer=setInterval(loadMatchAI,15000);
+ selectedId=document.getElementById("matches").value;
+ loadMatchAI();
+ clearInterval(timer);
+ timer=setInterval(loadMatchAI,15000);
 }
 
-function safeNum(x){return Number(String(x||"0").replace(/[^\d.]/g,""))||0}
-
-function analyse(match){
-  const score = match.score || [];
-  let text = JSON.stringify(match).toLowerCase();
-
-  let runs = 0, wkts = 0, overs = 0;
-  if(score[0]){
-    runs=safeNum(score[0].r);
-    wkts=safeNum(score[0].w);
-    overs=safeNum(score[0].o);
-  }
-
-  let rr = overs>0 ? runs/overs : 0;
-  let pressure = 40;
-  if(wkts>=5) pressure+=25;
-  if(wkts>=7) pressure+=20;
-  if(rr>=9) pressure-=10;
-  if(text.includes("need") || text.includes("required")) pressure+=10;
-
-  let momentum = 50;
-  if(rr>=8) momentum+=20;
-  if(rr>=10) momentum+=10;
-  if(wkts>=5) momentum-=20;
-
-  let trap = 20;
-  if(wkts>=2 && overs<4) trap+=25;
-  if(wkts>=6) trap+=25;
-  if(text.includes("review") || text.includes("rain")) trap+=15;
-
-  let confidence = Math.max(5,Math.min(95, momentum - trap + 45 - pressure/3));
-  let decision="WAIT";
-  let cls="wait";
-  if(confidence>=80 && trap<35 && pressure<60){decision="ENTER";cls="enter"}
-  if(trap>=60 || pressure>=80){decision="BLOCK";cls="block"}
-
-  return {runs,wkts,overs,rr:rr.toFixed(2),pressure,momentum,trap,confidence:confidence.toFixed(0),decision,cls};
+function ai(m){
+ let s=m.score||[],runs=0,wickets=0,overs=0;
+ if(s[0]){runs=n(s[0].r);wickets=n(s[0].w);overs=n(s[0].o)}
+ let rr=overs?runs/overs:0;
+ let txt=JSON.stringify(m).toLowerCase();
+ let momentum=50+(rr>=8?15:0)+(rr>=10?10:0)-(wickets>=5?20:0);
+ let pressure=35+(wickets>=4?15:0)+(wickets>=6?20:0)+(txt.includes("need")?10:0);
+ let trap=20+(wickets>=2&&overs<=4?20:0)+(wickets>=5?20:0)+(txt.includes("rain")?15:0);
+ let confidence=Math.max(5,Math.min(95,momentum+35-pressure/3-trap/2));
+ let win=Math.max(5,Math.min(95,50+momentum-pressure/2-trap/3));
+ let decision="WAIT",cls="wait",reason="Mixed signals. Wait for confirmation.";
+ if(confidence>=82&&trap<35&&pressure<60){decision="ENTER";cls="enter";reason="Strong momentum with controlled risk."}
+ if(confidence<45||pressure>=75){decision="AVOID";cls="avoid";reason="Weak setup or high pressure."}
+ if(trap>=65||pressure>=88||wickets>=8){decision="BLOCK";cls="block";reason="High danger / collapse risk."}
+ return {rr:rr.toFixed(2),momentum:Math.round(momentum),pressure:Math.round(pressure),trap:Math.round(trap),confidence:Math.round(confidence),win:Math.round(win),decision,cls,reason};
 }
 
 async function loadMatchAI(){
-  if(!selectedId) return;
-  const app=document.getElementById("app");
-  app.innerHTML=`<div class="card">Loading live AI...</div>`;
-
-  try{
-    const url=`https://api.cricapi.com/v1/match_scorecard?apikey=${API_KEY}&id=${selectedId}`;
-    const j=await api(url);
-    const m=j.data || {};
-    const a=analyse(m);
-
-    let scoreHtml="";
-    (m.score||[]).forEach(s=>{
-      scoreHtml+=`<div class="badge">${s.inning||"Innings"}: ${s.r}/${s.w} (${s.o})</div>`;
-    });
-
-    let bats="";
-    if(m.scorecard){
-      m.scorecard.forEach(inn=>{
-        bats+=`<div class="card"><b>${inn.inning||"Innings"}</b>`;
-        (inn.batting||[]).slice(0,6).forEach(p=>{
-          bats+=`<div>${p.batsman?.name||p.name||"Player"} - ${p.r||0} runs</div>`;
-        });
-        bats+=`</div>`;
-      });
-    }
-
-    app.innerHTML=`
-      <div class="card">
-        <div class="big">${m.name || "Live Match"}</div>
-        <div class="small">${m.status || ""}</div>
-        ${scoreHtml}
-      </div>
-
-      <div class="card ${a.cls}">
-        <h2>AI FINAL DECISION: ${a.decision}</h2>
-        <div>Confidence: ${a.confidence}%</div>
-        <div>Run Rate: ${a.rr}</div>
-        <div>Momentum: ${a.momentum}</div>
-        <div>Pressure: ${a.pressure}</div>
-        <div>Trap Risk: ${a.trap}</div>
-      </div>
-
-      <div class="card">
-        <h3>AI Reason</h3>
-        <p>
-        ${a.decision==="ENTER" ? "Clean momentum, acceptable pressure, low trap risk." : ""}
-        ${a.decision==="WAIT" ? "Mixed situation. Need more ball-by-ball confirmation before strong signal." : ""}
-        ${a.decision==="BLOCK" ? "High danger: wicket pressure, collapse risk, trap risk or unstable match condition." : ""}
-        </p>
-      </div>
-
-      ${bats || `<div class="card">Ball-by-ball / scorecard data not available for this match or plan.</div>`}
-
-      <div class="card small">
-        Last updated: ${new Date().toLocaleTimeString()}
-      </div>
-    `;
-  }catch(e){
-    app.innerHTML=`<div class="card">Error loading match. API key, limit, or match coverage problem.</div>`;
-  }
+ if(!selectedId)return;
+ const app=document.getElementById("app");
+ app.innerHTML='<div class="card">Loading AI...</div>';
+ try{
+  const j=await getJson(`${BACKEND}/api/scorecard/${selectedId}`);
+  const m=j.data||{};
+  const a=ai(m);
+  let score="";
+  (m.score||[]).forEach(x=>score+=`<span class="badge">${x.inning||"Innings"}: ${x.r}/${x.w} (${x.o})</span>`);
+  app.innerHTML=`
+  <div class="card"><div class="big">${m.name||"Match"}</div><div class="small">${m.status||""}</div>${score}</div>
+  <div class="card ${a.cls}"><h2>AI FINAL: ${a.decision}</h2><div class="big">${a.confidence}%</div><p>${a.reason}</p></div>
+  <div class="row">
+    <div class="kpi">🏆 Win Probability<br><span class="big">${a.win}%</span></div>
+    <div class="kpi">⚡ Run Rate<br><span class="big">${a.rr}</span></div>
+    <div class="kpi">🔥 Momentum<br><span class="big">${a.momentum}</span></div>
+    <div class="kpi">⚠️ Pressure<br><span class="big">${a.pressure}</span></div>
+    <div class="kpi">🪤 Trap Risk<br><span class="big">${a.trap}</span></div>
+    <div class="kpi">🔄 Refresh<br><span class="big">15s</span></div>
+  </div>
+  <div class="card small">Last update: ${new Date().toLocaleTimeString()}</div>`;
+ }catch(e){app.innerHTML='<div class="card">Could not load scorecard.</div>'}
 }
 </script>
 </body>
