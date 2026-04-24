@@ -2,102 +2,196 @@ const express = require("express");
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// HOME PAGE (UI)
+// Put your CricketData/CricAPI key here
+const API_KEY = "PASTE_YOUR_API_KEY_HERE";
+
 app.get("/", (req, res) => {
   res.send(`
 <!DOCTYPE html>
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>I LOVE YOU - Live Cricket</title>
-
+<title>I LOVE YOU ULTRA AI</title>
 <style>
-body{
-  background:#07111f;
-  color:white;
-  font-family:Arial;
-  text-align:center;
-  padding:20px;
-}
-
-h1{font-size:30px}
-
-button{
-  padding:15px 25px;
-  border:none;
-  border-radius:20px;
-  background:#4CAF50;
-  color:white;
-  font-size:18px;
-  margin-top:15px;
-}
-
-.card{
-  background:#111827;
-  padding:20px;
-  margin:20px 0;
-  border-radius:20px;
-}
+body{background:#07111f;color:white;font-family:Arial;text-align:center;padding:15px}
+h1{font-size:34px}
+button{padding:16px 26px;margin:15px;border:none;border-radius:22px;background:#4CAF50;color:white;font-size:20px}
+.card{background:#111827;padding:20px;margin:18px 0;border-radius:24px;box-shadow:0 0 18px #000}
+.good{color:#00ffcc;font-weight:bold}
+.wait{color:yellow;font-weight:bold}
+.bad{color:#ff5c5c;font-weight:bold}
+.info{color:#9fd3ff;font-weight:bold}
+.bar{background:#333;border-radius:20px;overflow:hidden;margin:10px 0}
+.fill{height:14px;background:#00ffcc}
+.small{color:#bbb;font-size:14px}
 </style>
-
 </head>
-
 <body>
 
-<h1>❤️ I LOVE YOU</h1>
-<p>Live Cricket System</p>
-
-<button onclick="load()">Load Matches</button>
-
+<h1>❤️ I LOVE YOU ULTRA AI</h1>
+<p>Live Cricket Prediction Engine</p>
+<button onclick="load()">Load / Refresh Matches</button>
 <div id="matches"></div>
 
 <script>
 async function load(){
-  document.getElementById("matches").innerHTML = "Loading...";
-
+  document.getElementById("matches").innerHTML="Loading live intelligence...";
   let res = await fetch("/api/current-matches");
   let json = await res.json();
 
-  let html = json.data.map(m => {
+  document.getElementById("matches").innerHTML = json.data.map(m=>{
+    let a = analyze(m);
+
     return \`
       <div class="card">
         <h2>\${m.name}</h2>
         <p>\${m.status}</p>
-        <b>\${m.score}</b>
+        <h3>\${m.score}</h3>
+
+        <p class="\${a.cls}">\${a.finalDecision}</p>
+
+        <p class="info">Win Probability: \${a.win}%</p>
+        <div class="bar"><div class="fill" style="width:\${a.win}%"></div></div>
+
+        <p>Opportunity Score: \${a.opportunity}/100</p>
+        <p>Momentum: \${a.momentum}</p>
+        <p>Pressure: \${a.pressure}</p>
+        <p>Risk: \${a.risk}</p>
+        <p>Session Call: \${a.sessionCall}</p>
+        <p class="small">\${a.reason}</p>
       </div>
     \`;
   }).join("");
-
-  document.getElementById("matches").innerHTML = html;
 }
-</script>
 
+function analyze(m){
+  let status = (m.status || "").toLowerCase();
+  let score = (m.score || "").toLowerCase();
+
+  let win = 50;
+  let opportunity = 50;
+  let finalDecision = "⏳ WAIT";
+  let cls = "wait";
+  let momentum = "Neutral";
+  let pressure = "Medium";
+  let risk = "Medium";
+  let sessionCall = "WAIT";
+  let reason = "No strong edge detected yet.";
+
+  if(status.includes("won")){
+    win = 100;
+    opportunity = 0;
+    finalDecision = "✅ MATCH FINISHED";
+    cls = "good";
+    momentum = "Completed";
+    pressure = "None";
+    risk = "None";
+    sessionCall = "CLOSED";
+    reason = "Match is already completed.";
+  }
+  else if(status.includes("need") || status.includes("target")){
+    win = 65;
+    opportunity = 78;
+    finalDecision = "🔥 ENTER / CHASE MODE";
+    cls = "good";
+    momentum = "Chasing";
+    pressure = "Medium-High";
+    risk = "Medium";
+    sessionCall = "YES if wickets stable";
+    reason = "Target/chase situation detected. Watch wickets and required rate.";
+  }
+  else if(status.includes("rain") || status.includes("delay") || status.includes("stopped")){
+    win = 30;
+    opportunity = 15;
+    finalDecision = "🚫 BLOCK";
+    cls = "bad";
+    momentum = "Interrupted";
+    pressure = "Unclear";
+    risk = "High";
+    sessionCall = "BLOCK";
+    reason = "Weather/delay creates unreliable conditions.";
+  }
+  else if(status.includes("innings break")){
+    win = 50;
+    opportunity = 25;
+    finalDecision = "⏳ WAIT";
+    cls = "wait";
+    momentum = "Break";
+    pressure = "Medium";
+    risk = "Medium";
+    sessionCall = "WAIT";
+    reason = "Innings break. Wait for next innings live data.";
+  }
+  else{
+    win = 55;
+    opportunity = 55;
+    finalDecision = "📊 WATCH";
+    cls = "wait";
+    momentum = "Live";
+    pressure = "Medium";
+    risk = "Medium";
+    sessionCall = "WAIT";
+    reason = "Live match detected but no strong edge yet.";
+  }
+
+  if(score.includes("/6") || score.includes("/7") || score.includes("/8") || score.includes("/9")){
+    opportunity = Math.max(10, opportunity - 30);
+    win = Math.max(20, win - 15);
+    finalDecision = "❌ BLOCK / WICKET RISK";
+    cls = "bad";
+    momentum = "Weak";
+    pressure = "High";
+    risk = "High";
+    sessionCall = "NO";
+    reason = "High wicket pressure detected.";
+  }
+
+  return {win, opportunity, finalDecision, cls, momentum, pressure, risk, sessionCall, reason};
+}
+
+setInterval(load,15000);
+load();
+</script>
 </body>
 </html>
   `);
 });
 
+app.get("/api/current-matches", async (req, res) => {
+  try {
+    if (!API_KEY || API_KEY === "PASTE_YOUR_API_KEY_HERE") {
+      return res.json({ data: demo() });
+    }
 
-// API (SAFE STATIC DATA - NO ERROR)
-app.get("/api/current-matches", (req, res) => {
-  res.json({
-    data: [
-      {
-        name: "Mumbai vs Chennai",
-        status: "Mumbai need 36 runs in 24 balls",
-        score: "143/4 (16 overs)"
-      },
-      {
-        name: "RCB vs Rajasthan",
-        status: "RCB 106/1 (10 overs)",
-        score: "106/1"
-      }
-    ]
-  });
+    const response = await fetch(
+      "https://api.cricapi.com/v1/currentMatches?apikey=" + API_KEY + "&offset=0"
+    );
+
+    const data = await response.json();
+
+    const matches = (data.data || []).map(m => ({
+      name: m.name || "Live Match",
+      status: m.status || "Live",
+      score: Array.isArray(m.score)
+        ? m.score.map(s => (s.r ?? "--") + "/" + (s.w ?? 0) + " (" + (s.o ?? "--") + " overs)").join(" | ")
+        : "Score unavailable"
+    }));
+
+    res.json({ data: matches.length ? matches : demo() });
+
+  } catch (e) {
+    res.json({ data: demo() });
+  }
 });
 
+function demo(){
+  return [
+    {name:"Mumbai vs Chennai",status:"Mumbai need 36 runs in 24 balls",score:"143/4 (16 overs)"},
+    {name:"RCB vs Rajasthan",status:"RCB 106/1 (10 overs)",score:"106/1"},
+    {name:"India vs Australia",status:"Rain delay",score:"Match paused"}
+  ];
+}
 
-// SERVER START
 app.listen(PORT, () => {
-  console.log("Server running on port " + PORT);
+  console.log("I LOVE YOU ULTRA AI running on port " + PORT);
 });
