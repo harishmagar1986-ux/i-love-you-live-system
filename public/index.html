@@ -1,122 +1,59 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>I LOVE YOU Cricket AI PRO</title>
-<style>
-body{margin:0;font-family:Arial;background:#06101f;color:white}
-.wrap{padding:14px;max-width:900px;margin:auto}
-.card{background:#101d33;border-radius:18px;padding:14px;margin:12px 0}
-button,input,select{width:100%;padding:14px;border-radius:13px;border:0;margin:6px 0;font-size:15px;box-sizing:border-box}
-button{background:#00e676;font-weight:800}
-.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.kpi{background:#071426;border-radius:14px;padding:12px}
-.big{font-size:26px;font-weight:900}
-.small{color:#b5c2d6}
-.enter{background:#063d23}.wait{background:#4a3600}.avoid{background:#32153d}.block{background:#4a0912}
-.badge{display:inline-block;background:#203656;padding:7px 10px;border-radius:20px;margin:3px}
-</style>
-</head>
-<body>
-<div class="wrap">
-<h1>🏏 I LOVE YOU Cricket AI PRO</h1>
-<div class="card">
-<b>Backend URL</b>
-<input id="backend" placeholder="Paste Render backend URL, example: https://your-app.onrender.com">
-<button onclick="saveBackend()">SAVE BACKEND</button>
-<button onclick="loadMatches()">LOAD LIVE MATCHES</button>
-</div>
-
-<div class="card">
-<select id="matches" onchange="selectMatch()"><option>Load matches first</option></select>
-<button onclick="loadMatchAI()">REFRESH</button>
-</div>
-
+<h1>🏏 I LOVE YOU Cricket AI</h1>
+<button onclick="loadMatches()">LOAD MATCHES</button>
+<select id="matches" onchange="showMatch()"></select>
 <div id="app"></div>
-</div>
 
 <script>
-let BACKEND=localStorage.getItem("BACKEND_URL")||"";
-let selectedId="";
-let timer=null;
-document.getElementById("backend").value=BACKEND;
+const BACKEND = "https://i-love-you-backend.onrender.com";
 
-function saveBackend(){
- BACKEND=document.getElementById("backend").value.trim().replace(/\/$/,"");
- localStorage.setItem("BACKEND_URL",BACKEND);
- alert("Backend saved ✅");
-}
-async function getJson(url){let r=await fetch(url);return await r.json();}
-function n(x){return Number(String(x||0).replace(/[^\d.]/g,""))||0}
+const DEMO = [
+  {id:"demo1",name:"India vs Australia",status:"DEMO MODE: India 142/3 in 15.2 overs"},
+  {id:"demo2",name:"CSK vs MI",status:"DEMO MODE: CSK need 48 runs from 30 balls"},
+  {id:"demo3",name:"RCB vs GT",status:"DEMO MODE: RCB 88/2 in 9 overs"}
+];
+
+let matches = [];
 
 async function loadMatches(){
- if(!BACKEND)return alert("Paste backend URL first");
- document.getElementById("app").innerHTML='<div class="card">Loading matches...</div>';
- try{
-  const j=await getJson(`${BACKEND}/api/matches`);
-  const arr=j.data||[];
-  const sel=document.getElementById("matches");
-  sel.innerHTML="";
-  arr.forEach(m=>{
-   let op=document.createElement("option");
-   op.value=m.id;
-   op.textContent=(m.name||"Match")+" | "+(m.status||"");
-   sel.appendChild(op);
+  document.getElementById("app").innerHTML = "Loading...";
+  try{
+    let r = await fetch(BACKEND + "/api/matches");
+    let j = await r.json();
+    matches = j.data && j.data.length ? j.data : DEMO;
+  }catch(e){
+    matches = DEMO;
+  }
+
+  let sel = document.getElementById("matches");
+  sel.innerHTML = "";
+  matches.forEach(m=>{
+    let o=document.createElement("option");
+    o.value=m.id;
+    o.textContent=m.name;
+    sel.appendChild(o);
   });
-  document.getElementById("app").innerHTML=`<div class="card">${arr.length} matches loaded ✅</div>`;
- }catch(e){
-  document.getElementById("app").innerHTML='<div class="card">Backend/API error.</div>';
- }
+
+  showMatch();
 }
 
-function selectMatch(){
- selectedId=document.getElementById("matches").value;
- loadMatchAI();
- clearInterval(timer);
- timer=setInterval(loadMatchAI,15000);
-}
+function showMatch(){
+  let id=document.getElementById("matches").value;
+  let m=matches.find(x=>x.id===id);
+  let demo = id.startsWith("demo");
 
-function ai(m){
- let s=m.score||[],runs=0,wickets=0,overs=0;
- if(s[0]){runs=n(s[0].r);wickets=n(s[0].w);overs=n(s[0].o)}
- let rr=overs?runs/overs:0;
- let txt=JSON.stringify(m).toLowerCase();
- let momentum=50+(rr>=8?15:0)+(rr>=10?10:0)-(wickets>=5?20:0);
- let pressure=35+(wickets>=4?15:0)+(wickets>=6?20:0)+(txt.includes("need")?10:0);
- let trap=20+(wickets>=2&&overs<=4?20:0)+(wickets>=5?20:0)+(txt.includes("rain")?15:0);
- let confidence=Math.max(5,Math.min(95,momentum+35-pressure/3-trap/2));
- let win=Math.max(5,Math.min(95,50+momentum-pressure/2-trap/3));
- let decision="WAIT",cls="wait",reason="Mixed signals. Wait for confirmation.";
- if(confidence>=82&&trap<35&&pressure<60){decision="ENTER";cls="enter";reason="Strong momentum with controlled risk."}
- if(confidence<45||pressure>=75){decision="AVOID";cls="avoid";reason="Weak setup or high pressure."}
- if(trap>=65||pressure>=88||wickets>=8){decision="BLOCK";cls="block";reason="High danger / collapse risk."}
- return {rr:rr.toFixed(2),momentum:Math.round(momentum),pressure:Math.round(pressure),trap:Math.round(trap),confidence:Math.round(confidence),win:Math.round(win),decision,cls,reason};
-}
-
-async function loadMatchAI(){
- if(!selectedId)return;
- const app=document.getElementById("app");
- app.innerHTML='<div class="card">Loading AI...</div>';
- try{
-  const j=await getJson(`${BACKEND}/api/scorecard/${selectedId}`);
-  const m=j.data||{};
-  const a=ai(m);
-  let score="";
-  (m.score||[]).forEach(x=>score+=`<span class="badge">${x.inning||"Innings"}: ${x.r}/${x.w} (${x.o})</span>`);
-  app.innerHTML=`
-  <div class="card"><div class="big">${m.name||"Match"}</div><div class="small">${m.status||""}</div>${score}</div>
-  <div class="card ${a.cls}"><h2>AI FINAL: ${a.decision}</h2><div class="big">${a.confidence}%</div><p>${a.reason}</p></div>
-  <div class="row">
-    <div class="kpi">🏆 Win Probability<br><span class="big">${a.win}%</span></div>
-    <div class="kpi">⚡ Run Rate<br><span class="big">${a.rr}</span></div>
-    <div class="kpi">🔥 Momentum<br><span class="big">${a.momentum}</span></div>
-    <div class="kpi">⚠️ Pressure<br><span class="big">${a.pressure}</span></div>
-    <div class="kpi">🪤 Trap Risk<br><span class="big">${a.trap}</span></div>
-    <div class="kpi">🔄 Refresh<br><span class="big">15s</span></div>
-  </div>
-  <div class="card small">Last update: ${new Date().toLocaleTimeString()}</div>`;
- }catch(e){app.innerHTML='<div class="card">Could not load scorecard.</div>'}
+  document.getElementById("app").innerHTML = `
+    <div style="padding:15px;margin-top:15px;border-radius:15px;background:#101d33;color:white">
+      <h2>${m.name}</h2>
+      <p>${m.status}</p>
+      <h3>${demo ? "🟡 DEMO MODE" : "🟢 LIVE MODE"}</h3>
+      <p>AI Decision: ${demo ? "WAIT / TESTING" : "LIVE ANALYSIS"}</p>
+    </div>
+  `;
 }
 </script>
-</body>
-</html>
+
+<style>
+body{font-family:Arial;background:#06101f;color:white;padding:20px}
+button,select{width:100%;padding:14px;margin:8px 0;border-radius:12px;border:0}
+button{background:#00e676;font-weight:bold}
+</style>
